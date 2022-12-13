@@ -16,6 +16,7 @@ include(CompileCommands)
 include(DefaultBuildType)
 include(DefaultInstallPath)
 include(ForceUnicode)
+include(DefineWindows)
 include(HideVSCodeVars)
 
-add_subdirectory(day1a)
+add_subdirectory(day01a)
