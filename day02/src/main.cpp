@@ -29,7 +29,7 @@ int main(int argc, char const *argv[]) {
   std::cout << "Day02B\n";
   std::cout << sumb << "\n";
 
-	return 0;
+  return 0;
 }
 
 int score_round(const std::string &s) {

@@ -36,5 +36,5 @@ int main(int argc, char const *argv[]) {
   for (int i = 1; i < 3; i++) sum += elves.rbegin()[i];
   std::cout << sum << "\n";
 
-	return 0;
+  return 0;
 }
