@@ -19,4 +19,5 @@ include(ForceUnicode)
 include(DefineWindows)
 include(HideVSCodeVars)
 
-add_subdirectory(day01a)
+add_subdirectory(day01)
+add_subdirectory(day02)

@@ -29,7 +29,12 @@ int main(int argc, char const *argv[]) {
   }
 
   std::sort(elves.begin(), elves.end());
-  std::cout << elves.back();
+  int sum = elves.rbegin()[0];
+  std::cout << sum << "\n";
+
+  std::cout << "Day01B\n";
+  for (int i = 1; i < 3; i++) sum += elves.rbegin()[i];
+  std::cout << sum << "\n";
 
 	return 0;
 }
