@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_set>
 
 int main(int argc, char const *argv[]);
 int parse_rucksack(const std::string &s);
