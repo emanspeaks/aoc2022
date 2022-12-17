@@ -8,8 +8,10 @@
 #include <unordered_set>
 #include <limits>
 #include <algorithm>
+#include <iostream>
 
 #define TIMELIMIT 30
+#define TIMELIMITPT2 26
 
 struct Valve {
   int rate;
@@ -55,113 +57,132 @@ class Network {
       return computeChain(0, TIMELIMIT, "", m_root, unopened, cost, dist);
     }
 
-    int computeChain(int maxcost, int timeleft, std::string chain, std::string here,
-      std::unordered_set<std::string> unopened, std::unordered_map<std::string, int> &cost,
-      std::unordered_map<std::string, std::unordered_map<std::string, int>> &dist)
-    {
-      std::string newchain;
-      int tmpcost, traveltime;
-      int basecost = (cost.count(chain))? cost[chain] : 0;
-      for (auto v: unopened) {
-        newchain = chain + v;
-        if (cost.count(newchain)) tmpcost = cost[newchain];
-        else {
-          traveltime = dist[here][v];
-          if ((traveltime + 1) >= timeleft) continue;
-          tmpcost = basecost + getCost(v, timeleft - traveltime);
-          cost[newchain] = tmpcost;
+    int dynProgDualMaxCost() {
+      std::cout << "setting up\n";
+      std::unordered_set<std::string> unopened;
+      std::unordered_map<std::string, std::unordered_map<std::string, int>> dist;
+      for (auto &v: m_data) {
+        if (v.second.get()->rate) unopened.insert(v.first);
+        for (auto &u: m_data) dist[u.first][v.first] = dijkstra(u.first, v.first);
+      }
 
-          std::unordered_set<std::string> newunopened(unopened);
-          newunopened.erase(v);
-          if (newunopened.size())
-            tmpcost = computeChain(tmpcost, timeleft - traveltime - 1, newchain, v, newunopened, cost, dist);
+      std::unordered_map<std::string, int> cost;
+
+      // compute all the dual permutations first
+      std::unordered_set<std::string> startcombos;
+      for (auto v: unopened) {
+        for (auto u: unopened) {
+          if (u == v) continue;
+          startcombos.insert((u < v)? u + v : v + u);
         }
-        maxcost = std::max(maxcost, tmpcost);
+      }
+      int combocount = startcombos.size();
+      std::cout << "combocount: " << combocount << "\n";
+
+      std::string a, b, chain;
+      int dista, distb, tmpcost, maxcost = 0, i = 0;
+      for (auto pair: startcombos) {
+        a = pair.substr(0, 2);
+        b = pair.substr(2, 2);
+        dista = dist[m_root][a];
+        distb = dist[m_root][b];
+
+        if ((dista + 1) >= TIMELIMITPT2 || (distb + 1) >= TIMELIMITPT2) continue;
+        chain = (dista < distb)? 'a' + a + 'b' + b : 'b' + b + 'a' + a;
+        tmpcost = getCost(a, TIMELIMITPT2 - dista) + getCost(b, TIMELIMITPT2 - distb);
+        cost[chain] = tmpcost;
+        std::unordered_set<std::string> newunopened(unopened);
+        newunopened.erase(a);
+        newunopened.erase(b);
+        std::cout << "test: " << chain << " (" << 100.0*++i/combocount << "%)\n";
+        tmpcost = computeDualChain(maxcost, a, TIMELIMITPT2 - dista - 1, b, TIMELIMITPT2 - distb - 1,
+          chain, newunopened, cost, dist);
+        if (tmpcost > maxcost) maxcost = tmpcost;
       }
 
       return maxcost;
     }
 
-    int randyMaxCost() {
-      std::unordered_set<std::string> unopened;
-      for (auto &v: m_data) if (v.second.get()->rate) unopened.insert(v.first);
-      int timeleft = TIMELIMIT;
-      std::string here = m_root;
-      int cost = 0;
+    // int randyMaxCost() {
+    //   std::unordered_set<std::string> unopened;
+    //   for (auto &v: m_data) if (v.second.get()->rate) unopened.insert(v.first);
+    //   int timeleft = TIMELIMIT;
+    //   std::string here = m_root;
+    //   int cost = 0;
 
-      // iterate through all unopened valves and compute their cost from here
-      int tmpcost, traveltime, maxdelta, maxtravel;
-      std::string next = m_root;
-      while (timeleft && unopened.size()) {
-        maxtravel = 0;
-        maxdelta = 0;
-        for (auto v: unopened) {
-          traveltime = dijkstra(here, v);
-          tmpcost = getCost(v, timeleft - traveltime);
-          if (tmpcost > maxdelta) {
-            maxdelta = tmpcost;
-            next = v;
-            maxtravel = traveltime;
-          }
-        }
+    //   // iterate through all unopened valves and compute their cost from here
+    //   int tmpcost, traveltime, maxdelta, maxtravel;
+    //   std::string next = m_root;
+    //   while (timeleft && unopened.size()) {
+    //     maxtravel = 0;
+    //     maxdelta = 0;
+    //     for (auto v: unopened) {
+    //       traveltime = dijkstra(here, v);
+    //       tmpcost = getCost(v, timeleft - traveltime);
+    //       if (tmpcost > maxdelta) {
+    //         maxdelta = tmpcost;
+    //         next = v;
+    //         maxtravel = traveltime;
+    //       }
+    //     }
 
-        // pull the trigger on the current max and drop from unopened
-        timeleft -= traveltime + 1; //include valve open time
-        cost += maxdelta;
-        unopened.erase(next);
-        here = next;
-      }
+    //     // pull the trigger on the current max and drop from unopened
+    //     timeleft -= traveltime + 1; //include valve open time
+    //     cost += maxdelta;
+    //     unopened.erase(next);
+    //     here = next;
+    //   }
 
-      return cost;
-    }
+    //   return cost;
+    // }
 
-    int dijkstraMaxCost() {
-      std::unordered_map<std::string, int> cost, timeleftafter;
-      std::unordered_map<std::string, std::string> prev;
-      std::unordered_set<std::string> q;
+    // int dijkstraMaxCost() {
+    //   std::unordered_map<std::string, int> cost, timeleftafter;
+    //   std::unordered_map<std::string, std::string> prev;
+    //   std::unordered_set<std::string> q;
 
-      for (auto &v: m_data) {
-        cost[v.first] = -1;
-        prev[v.first] = "";
-        q.insert(v.first);
-      }
-      int tmp = getCost(m_root, TIMELIMIT);
-      cost[m_root] = tmp;
-      timeleftafter[m_root] = TIMELIMIT - 1 - (tmp>0);
+    //   for (auto &v: m_data) {
+    //     cost[v.first] = -1;
+    //     prev[v.first] = "";
+    //     q.insert(v.first);
+    //   }
+    //   int tmp = getCost(m_root, TIMELIMIT);
+    //   cost[m_root] = tmp;
+    //   timeleftafter[m_root] = TIMELIMIT - 1 - (tmp>0);
 
-      int max, tmptime;
-      std::string u;
-      Valve* udata;
-      while (q.size()) {
-        max = -1;
-        for (auto v: q) {
-          tmp = cost[v];
-          if (tmp >= max) {
-            u = v;
-            max = tmp;
-          }
-        }
-        q.erase(u);
-        udata = m_data[u].get();
+    //   int max, tmptime;
+    //   std::string u;
+    //   Valve* udata;
+    //   while (q.size()) {
+    //     max = -1;
+    //     for (auto v: q) {
+    //       tmp = cost[v];
+    //       if (tmp >= max) {
+    //         u = v;
+    //         max = tmp;
+    //       }
+    //     }
+    //     q.erase(u);
+    //     udata = m_data[u].get();
 
-        for (auto v: udata->next) {
-          if (q.find(v) == q.end()) continue;
-          tmp = max + getCost(v, timeleftafter[u]);
-          if (tmp > cost[v]) {
-            cost[v] = tmp;
-            tmptime = timeleftafter[u] - 1 - (tmp>0);
-            if (tmptime < 0) tmptime = 0;
-            timeleftafter[v] = tmptime;
-            prev[v] = u;
-          }
-        }
-      }
+    //     for (auto v: udata->next) {
+    //       if (q.find(v) == q.end()) continue;
+    //       tmp = max + getCost(v, timeleftafter[u]);
+    //       if (tmp > cost[v]) {
+    //         cost[v] = tmp;
+    //         tmptime = timeleftafter[u] - 1 - (tmp>0);
+    //         if (tmptime < 0) tmptime = 0;
+    //         timeleftafter[v] = tmptime;
+    //         prev[v] = u;
+    //       }
+    //     }
+    //   }
 
-      // find max cost and return
-      max = -1;
-      for (auto &v: m_data) if (cost[v.first] > max) max = cost[v.first];
-      return max;
-    }
+    //   // find max cost and return
+    //   max = -1;
+    //   for (auto &v: m_data) if (cost[v.first] > max) max = cost[v.first];
+    //   return max;
+    // }
 
   private:
     std::unordered_map<std::string, std::unique_ptr<Valve>> m_data;
@@ -219,5 +240,81 @@ class Network {
       }
 
       return dist[to];
+    }
+
+    int computeChain(int maxcost, int timeleft, std::string chain, std::string here,
+      std::unordered_set<std::string> unopened, std::unordered_map<std::string, int> &cost,
+      std::unordered_map<std::string, std::unordered_map<std::string, int>> &dist)
+    {
+      std::string newchain;
+      int tmpcost, traveltime;
+      int basecost = (cost.count(chain))? cost[chain] : 0;
+      for (auto v: unopened) {
+        newchain = chain + v;
+        if (cost.count(newchain)) tmpcost = cost[newchain];
+        else {
+          traveltime = dist[here][v];
+          if ((traveltime + 1) >= timeleft) continue;
+          tmpcost = basecost + getCost(v, timeleft - traveltime);
+          cost[newchain] = tmpcost;
+
+          std::unordered_set<std::string> newunopened(unopened);
+          newunopened.erase(v);
+          if (newunopened.size())
+            tmpcost = computeChain(tmpcost, timeleft - traveltime - 1, newchain, v, newunopened, cost, dist);
+        }
+        maxcost = std::max(maxcost, tmpcost);
+      }
+
+      return maxcost;
+    }
+
+    int computeDualChain(int maxcost, std::string a, int atimeleft, std::string b, int btimeleft,
+      std::string chain, std::unordered_set<std::string> unopened, std::unordered_map<std::string, int> &cost,
+      std::unordered_map<std::string, std::unordered_map<std::string, int>> &dist)
+    {
+      std::string newchain;
+      int tmpcost, traveltime, deltatime = abs(atimeleft - btimeleft);
+      int basecost = (cost.count(chain))? cost[chain] : 0;
+      for (auto v: unopened) {
+        for (char c = 'a'; c < 'c'; c++) {
+          newchain = chain + c + v;
+          if (cost.count(newchain)) tmpcost = cost[newchain];
+          else {
+            // get this out of the way now, even if we end up not using it
+            std::unordered_set<std::string> newunopened(unopened);
+            newunopened.erase(v);
+
+            switch (c) {
+              case 'a': {
+                traveltime = dist[a][v];
+                if (atimeleft > btimeleft && traveltime < deltatime) continue;
+                if ((traveltime + 1) >= atimeleft) continue;
+                tmpcost = basecost + getCost(v, atimeleft - traveltime);
+                cost[newchain] = tmpcost;
+                if (newunopened.size())
+                  tmpcost = computeDualChain(tmpcost, v, atimeleft - traveltime - 1, b, btimeleft,
+                    newchain, newunopened, cost, dist);
+
+                break;
+              }
+
+              case 'b': {
+                traveltime = dist[b][v];
+                if (btimeleft > atimeleft && traveltime < deltatime) continue;
+                if ((traveltime + 1) >= btimeleft) continue;
+                tmpcost = basecost + getCost(v, btimeleft - traveltime);
+                cost[newchain] = tmpcost;
+                if (newunopened.size())
+                  tmpcost = computeDualChain(tmpcost, a, atimeleft, v, btimeleft - traveltime - 1,
+                    newchain, newunopened, cost, dist);
+                break;
+              }
+            }
+          }
+          maxcost = std::max(maxcost, tmpcost);
+        }
+      }
+      return maxcost;
     }
 };

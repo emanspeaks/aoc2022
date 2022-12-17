@@ -28,7 +28,7 @@ int main(int argc, char const *argv[]) {
   std::cout << net.dynProgMaxCost() << "\n";
 
   std::cout << "Day16B\n";
-  std::cout << "\n";
+  std::cout << net.dynProgDualMaxCost() <<"\n";
 
   return 0;
 }
