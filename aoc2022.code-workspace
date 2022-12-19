@@ -4,7 +4,16 @@
 			"path": "."
 		}
 	],
-	"settings": {},
+	"settings": {
+		"files.associations": {
+			"*.json": "jsonc",
+			"vector": "cpp",
+			"array": "cpp",
+			"deque": "cpp",
+			"list": "cpp",
+			"xstring": "cpp"
+		}
+	},
 	"launch": {
 		"version": "0.2.0",
   	"configurations": [
