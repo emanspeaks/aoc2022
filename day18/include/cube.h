@@ -7,22 +7,11 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <array>
-#include <iostream>
 
 enum Face {mx = 1, px = 2, my = 4, py = 8, mz = 16, pz = 32, present = 64};
 enum FaceIdx {mxi, pxi, myi, pyi, mzi, pzi};
 
 const char facelist[6] = {mx, px, my, py, mz, pz};
-int face2Idx(char face) {for (int i = 0; i < 6; i++) if (facelist[i] == face) return i; return 0;}
-
-const char adjoining[6] = {
-  my|py|mz|pz, // mx
-  my|py|mz|pz, // px
-  mx|px|mz|pz, // my
-  mx|px|mz|pz, // py
-  mx|px|my|py, // mz
-  mx|px|my|py, // pz
-};
 
 typedef std::array<int, 3> Coord;
 typedef std::array<int, 4> FaceDef;
@@ -125,8 +114,6 @@ class CubeContainer {
           if (counted.find(selected) == counted.end()) neighbors.insert(selected);
         }
       }
-
-      // for (auto q: counted) std::cout << q << "\n";
 
       return counted.size();
     }
