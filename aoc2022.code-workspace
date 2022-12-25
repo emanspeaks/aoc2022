@@ -11,7 +11,8 @@
 			"array": "cpp",
 			"deque": "cpp",
 			"list": "cpp",
-			"xstring": "cpp"
+			"xstring": "cpp",
+			"utility": "cpp"
 		}
 	},
 	"launch": {
